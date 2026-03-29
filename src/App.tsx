@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useEffect, useRef } from 'react';
 import { Search, BookOpen, Map, Sparkles, ArrowRight, ExternalLink, Loader2, ChevronRight, MessageSquare, X, GraduationCap, Globe, Zap, Send, User, Bot, AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { cn } from './lib/utils';
-import { searchCourses, generateRoadmap, getChatResponse, type Course, type Roadmap } from './services/ai';
+import { searchCourses, generateRoadmap, getChatResponse, type Course, type Roadmap, type AISettings } from './services/ai';
 
 export default function App() {
   const [query, setQuery] = useState('');
@@ -11,11 +11,34 @@ export default function App() {
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
   const [activeTab, setActiveTab] = useState<'search' | 'roadmap'>('search');
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  const [aiSettings, setAiSettings] = useState<AISettings>(() => {
+    const saved = localStorage.getItem('edu-flow-settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Failed to parse settings", e);
+      }
+    }
+    return {
+      primaryProvider: 'gemini',
+      geminiKey: '',
+      mistralKey: '',
+      tavilyKey: '',
+      serperKey: ''
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('edu-flow-settings', JSON.stringify(aiSettings));
+  }, [aiSettings]);
 
   const handleSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -25,7 +48,7 @@ export default function App() {
     setRoadmap(null);
     setError(null);
     try {
-      const results = await searchCourses(query);
+      const results = await searchCourses(query, aiSettings);
       setCourses(results);
       setActiveTab('search');
     } catch (err: any) {
@@ -41,7 +64,7 @@ export default function App() {
     setIsSearching(true);
     setError(null);
     try {
-      const result = await generateRoadmap(query);
+      const result = await generateRoadmap(query, aiSettings);
       setRoadmap(result);
       setActiveTab('roadmap');
     } catch (err: any) {
@@ -64,7 +87,7 @@ export default function App() {
     setError(null);
 
     try {
-      const response = await getChatResponse(userMsg, newMessages);
+      const response = await getChatResponse(userMsg, newMessages, aiSettings);
       const aiText = typeof response === 'string' ? response : "I'm sorry, I couldn't process that.";
       setChatMessages(prev => [...prev, { role: 'ai', text: aiText }]);
     } catch (err: any) {
@@ -108,13 +131,22 @@ export default function App() {
             </button>
           </nav>
 
-          <button 
-            onClick={() => setIsChatOpen(true)}
-            className="brutal-btn flex items-center gap-2 text-sm font-bold uppercase"
-          >
-            <MessageSquare className="w-4 h-4" />
-            Assistant
-          </button>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 hover:bg-brand-paper transition-colors rounded-full"
+              title="Settings"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => setIsChatOpen(true)}
+              className="brutal-btn flex items-center gap-2 text-sm font-bold uppercase"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Assistant
+            </button>
+          </div>
         </div>
       </header>
 
@@ -507,6 +539,106 @@ export default function App() {
                 className="flex-1 border-2 border-brand-black py-4 font-bold uppercase tracking-widest hover:bg-brand-paper transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-brand-black/80 backdrop-blur-sm"
+            onClick={() => setIsSettingsOpen(false)}
+          />
+          <div className="relative w-full max-w-md bg-white brutal-border p-8 overflow-y-auto max-h-[90vh]">
+            <button 
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute right-4 top-4 p-2 hover:bg-brand-paper transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            <h2 className="text-3xl font-serif font-black uppercase mb-6">AI Settings</h2>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest opacity-40 mb-2 block">Primary Provider</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => setAiSettings(prev => ({ ...prev, primaryProvider: 'gemini' }))}
+                    className={cn(
+                      "py-2 font-bold uppercase text-sm border-2 border-brand-black transition-all",
+                      aiSettings.primaryProvider === 'gemini' ? "bg-brand-orange text-white" : "bg-white hover:bg-brand-paper"
+                    )}
+                  >
+                    Gemini
+                  </button>
+                  <button 
+                    onClick={() => setAiSettings(prev => ({ ...prev, primaryProvider: 'mistral' }))}
+                    className={cn(
+                      "py-2 font-bold uppercase text-sm border-2 border-brand-black transition-all",
+                      aiSettings.primaryProvider === 'mistral' ? "bg-brand-orange text-white" : "bg-white hover:bg-brand-paper"
+                    )}
+                  >
+                    Mistral
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest opacity-40 mb-1 block">Gemini API Key</label>
+                  <input 
+                    type="password"
+                    value={aiSettings.geminiKey}
+                    onChange={(e) => setAiSettings(prev => ({ ...prev, geminiKey: e.target.value }))}
+                    placeholder="Enter Gemini Key"
+                    className="w-full px-4 py-2 border-2 border-brand-black focus:outline-none"
+                  />
+                  <p className="text-[10px] mt-1 opacity-60 italic">Leave empty to use environment default</p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest opacity-40 mb-1 block">Mistral API Key</label>
+                  <input 
+                    type="password"
+                    value={aiSettings.mistralKey}
+                    onChange={(e) => setAiSettings(prev => ({ ...prev, mistralKey: e.target.value }))}
+                    placeholder="Enter Mistral Key"
+                    className="w-full px-4 py-2 border-2 border-brand-black focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest opacity-40 mb-1 block">Tavily API Key</label>
+                  <input 
+                    type="password"
+                    value={aiSettings.tavilyKey}
+                    onChange={(e) => setAiSettings(prev => ({ ...prev, tavilyKey: e.target.value }))}
+                    placeholder="Enter Tavily Key"
+                    className="w-full px-4 py-2 border-2 border-brand-black focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-widest opacity-40 mb-1 block">Serper API Key</label>
+                  <input 
+                    type="password"
+                    value={aiSettings.serperKey}
+                    onChange={(e) => setAiSettings(prev => ({ ...prev, serperKey: e.target.value }))}
+                    placeholder="Enter Serper Key"
+                    className="w-full px-4 py-2 border-2 border-brand-black focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="w-full bg-brand-black text-white py-3 font-bold uppercase hover:bg-brand-orange transition-colors"
+              >
+                Save & Close
               </button>
             </div>
           </div>
