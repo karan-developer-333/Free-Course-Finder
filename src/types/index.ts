@@ -37,6 +37,26 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface FavoriteCourse {
+  id: string;
+  title: string;
+  provider: string;
+  url: string;
+  description?: string;
+  rating?: number;
+  duration?: string;
+  level?: string;
+  addedAt: number;
+}
+
 export interface AISettings {
   primaryProvider: 'gemini' | 'mistral';
   geminiApiKey?: string;

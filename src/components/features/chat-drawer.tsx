@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChatMessage } from '@/types';
-import { Send, X, Bot, User } from 'lucide-react';
+import { Send, X, Bot, User, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
@@ -13,6 +13,7 @@ interface ChatDrawerProps {
   onClose: () => void;
   messages: ChatMessage[];
   onSendMessage: (message: string) => Promise<void>;
+  onOpenHistory: () => void;
   isLoading?: boolean;
 }
 
@@ -41,6 +42,7 @@ export function ChatDrawer({
   onClose,
   messages,
   onSendMessage,
+  onOpenHistory,
   isLoading,
 }: ChatDrawerProps) {
   const [input, setInput] = useState('');
@@ -83,12 +85,21 @@ export function ChatDrawer({
             <Bot className="w-6 h-6 text-brand-orange" />
             <h2 className="font-bold text-lg">AI Assistant</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-brand-paper transition-colors rounded-md"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onOpenHistory}
+              className="p-2 hover:bg-brand-paper transition-colors rounded-md"
+              title="Chat History"
+            >
+              <History className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-brand-paper transition-colors rounded-md"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">

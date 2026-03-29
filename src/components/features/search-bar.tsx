@@ -9,6 +9,7 @@ interface SearchBarProps {
   onChange: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   isLoading?: boolean;
+  activeTab:string;
   placeholder?: string;
 }
 
@@ -16,6 +17,7 @@ export function SearchBar({
   value,
   onChange,
   onSubmit,
+  activeTab,
   isLoading,
   placeholder = 'Search for courses...',
 }: SearchBarProps) {
@@ -32,10 +34,12 @@ export function SearchBar({
           disabled={isLoading}
         />
       </div>
-      <Button type="submit" disabled={isLoading || !value.trim()} className="px-4 sm:px-6">
+      {
+        activeTab === "search" && <Button type="submit" disabled={isLoading || !value.trim()} className="px-4 sm:px-6">
         <span className="hidden sm:inline">{isLoading ? 'Searching...' : 'Search'}</span>
         <span className="sm:hidden"><Search className="w-4 h-4" /></span>
       </Button>
+      }
     </form>
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Settings, MessageCircle, BookOpen } from 'lucide-react';
+import { Settings, MessageCircle, BookOpen, Heart } from 'lucide-react';
 
 interface TabNavProps {
-  activeTab: 'search' | 'roadmap';
-  onTabChange: (tab: 'search' | 'roadmap') => void;
+  activeTab: 'search' | 'roadmap' | 'favorites';
+  onTabChange: (tab: 'search' | 'roadmap' | 'favorites') => void;
   onOpenChat: () => void;
   onOpenSettings: () => void;
 }
@@ -19,6 +19,7 @@ export function TabNav({
   const tabs = [
     { id: 'search' as const, label: 'Find Courses', icon: BookOpen },
     { id: 'roadmap' as const, label: 'Roadmap', icon: BookOpen },
+    { id: 'favorites' as const, label: 'Favorites', icon: Heart },
   ];
 
   return (

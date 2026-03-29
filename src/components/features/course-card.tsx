@@ -2,19 +2,42 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Course } from '@/types';
-import { ExternalLink, Star, Clock, BookOpen } from 'lucide-react';
+import { ExternalLink, Star, Clock, BookOpen, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CourseCardProps {
   course: Course;
   onClick?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  showFavoriteButton?: boolean;
 }
 
-export function CourseCard({ course, onClick }: CourseCardProps) {
+export function CourseCard({ course, onClick, isFavorite, onToggleFavorite, showFavoriteButton = true }: CourseCardProps) {
   return (
-    <Card hover onClick={onClick} className="h-full flex flex-col">
+    <Card hover onClick={onClick} className="h-full flex flex-col relative">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleFavorite?.();
+        }}
+        className={cn(
+          'absolute top-2 right-2 z-10',
+          'w-8 h-8 brutal-border bg-white',
+          'flex items-center justify-center',
+          'transition-all duration-150',
+          showFavoriteButton ? 'opacity-100' : 'opacity-0',
+          isFavorite
+            ? 'text-red-500 hover:bg-red-100'
+            : 'text-brand-gray hover:bg-brand-paper hover:text-red-500'
+        )}
+        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Heart className={cn('w-4 h-4', isFavorite && 'fill-current')} />
+      </button>
+
       <CardHeader className="flex-1">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-2 pr-8">
           <CardTitle className="text-lg leading-tight">{course.title}</CardTitle>
           {course.isFree && (
             <span className="shrink-0 bg-green-500 text-white text-xs font-bold px-2 py-1">
