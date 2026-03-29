@@ -5,17 +5,24 @@ const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
+// Helper to check if a key is provided and not a placeholder
+const isValidKey = (key: string | undefined) => {
+  return key && key.trim() !== "" && !key.includes("MY_") && !key.includes("TODO");
+};
+
 let aiInstance: GoogleGenAI | null = null;
 
 function getAI() {
-  if (!aiInstance && GEMINI_API_KEY) {
-    aiInstance = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  if (!aiInstance && isValidKey(GEMINI_API_KEY)) {
+    aiInstance = new GoogleGenAI({ apiKey: GEMINI_API_KEY! });
   }
   return { gemini: aiInstance };
 }
 
 async function performWebSearch(query: string) {
-  if (TAVILY_API_KEY) {
+  let results = "";
+  
+  if (isValidKey(TAVILY_API_KEY)) {
     try {
       const response = await fetch('https://api.tavily.com/search', {
         method: 'POST',
@@ -27,31 +34,36 @@ async function performWebSearch(query: string) {
           max_results: 5
         })
       });
-      const data = await response.json();
-      return data.results.map((r: any) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join('\n\n');
+      if (response.ok) {
+        const data = await response.json();
+        results = data.results.map((r: any) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`).join('\n\n');
+      }
     } catch (e) {
-      console.error("Tavily search failed:", e);
+      console.error("Tavily search failed, trying fallback...", e);
     }
   }
   
-  if (SERPER_API_KEY) {
+  // If Tavily failed or was skipped, try Serper
+  if (!results && isValidKey(SERPER_API_KEY)) {
     try {
       const response = await fetch('https://google.serper.dev/search', {
         method: 'POST',
         headers: {
-          'X-API-KEY': SERPER_API_KEY,
+          'X-API-KEY': SERPER_API_KEY!,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ q: query })
       });
-      const data = await response.json();
-      return data.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet}`).join('\n\n') || "";
+      if (response.ok) {
+        const data = await response.json();
+        results = data.organic?.map((r: any) => `Title: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet}`).join('\n\n') || "";
+      }
     } catch (e) {
       console.error("Serper search failed:", e);
     }
   }
   
-  return "";
+  return results;
 }
 
 export interface Course {
@@ -78,6 +90,7 @@ export interface Roadmap {
 export async function searchCourses(query: string): Promise<Course[]> {
   const { gemini } = getAI();
   
+  // 1. Try Gemini with Google Search Grounding first
   if (gemini) {
     try {
       const response = await gemini.models.generateContent({
@@ -103,20 +116,23 @@ export async function searchCourses(query: string): Promise<Course[]> {
           }
         }
       });
-      return JSON.parse(response.text);
+      if (response.text) {
+        return JSON.parse(response.text);
+      }
     } catch (e) {
-      console.error("Gemini search failed:", e);
+      console.warn("Gemini search failed or key missing, switching to Mistral + Tavily/Serper fallback.", e);
     }
   }
 
+  // 2. Fallback: Use Tavily/Serper for search + Mistral for processing
   const searchResults = await performWebSearch(`free online courses for ${query}`);
   const prompt = `Based on these search results, find the best 5 FREE online courses for "${query}".
   Return ONLY a JSON array of objects with these fields: title, provider, url, description, isFree (boolean), rating (optional string).
   
   Search Results:
-  ${searchResults}`;
+  ${searchResults || "No search results found. Use your internal knowledge to suggest the best free courses."}`;
 
-  if (MISTRAL_API_KEY) {
+  if (isValidKey(MISTRAL_API_KEY)) {
     try {
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
@@ -136,7 +152,7 @@ export async function searchCourses(query: string): Promise<Course[]> {
         return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
       }
     } catch (e) {
-      console.error("Mistral search failed:", e);
+      console.error("Mistral fallback search failed:", e);
     }
   }
 
@@ -146,6 +162,7 @@ export async function searchCourses(query: string): Promise<Course[]> {
 export async function generateRoadmap(topic: string): Promise<Roadmap> {
   const { gemini } = getAI();
   
+  // 1. Try Gemini with Google Search Grounding first
   if (gemini) {
     try {
       const response = await gemini.models.generateContent({
@@ -186,20 +203,23 @@ export async function generateRoadmap(topic: string): Promise<Roadmap> {
           }
         }
       });
-      return JSON.parse(response.text);
+      if (response.text) {
+        return JSON.parse(response.text);
+      }
     } catch (e) {
-      console.error("Gemini roadmap failed:", e);
+      console.warn("Gemini roadmap failed or key missing, switching to Mistral + Tavily/Serper fallback.", e);
     }
   }
 
+  // 2. Fallback: Use Tavily/Serper for search + Mistral for processing
   const searchResults = await performWebSearch(`learning path and resources for ${topic}`);
   const prompt = `Generate a structured learning roadmap for "${topic}".
   Return ONLY a JSON object with these fields: title, overview, steps (array of objects with title, description, resources (array of {name, url})).
   
   Context:
-  ${searchResults}`;
+  ${searchResults || "No search results found. Use your internal knowledge to generate a high-quality roadmap."}`;
 
-  if (MISTRAL_API_KEY) {
+  if (isValidKey(MISTRAL_API_KEY)) {
     try {
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
@@ -219,16 +239,17 @@ export async function generateRoadmap(topic: string): Promise<Roadmap> {
         return jsonMatch ? JSON.parse(jsonMatch[0]) : null;
       }
     } catch (e) {
-      console.error("Mistral roadmap failed:", e);
+      console.error("Mistral fallback roadmap failed:", e);
     }
   }
 
-  return { title: "Error", overview: "Could not generate roadmap.", steps: [] };
+  return { title: "Error", overview: "Could not generate roadmap. Please check your API keys.", steps: [] };
 }
 
 export async function getChatResponse(message: string, history: { role: 'user' | 'ai'; text: string }[]) {
   const { gemini } = getAI();
   
+  // 1. Try Gemini first
   if (gemini) {
     try {
       const chat = gemini.chats.create({
@@ -242,14 +263,23 @@ export async function getChatResponse(message: string, history: { role: 'user' |
         }))
       });
       const response = await chat.sendMessage({ message });
-      return response.text;
+      if (response.text) {
+        return response.text;
+      }
     } catch (e) {
-      console.error("Gemini chat failed:", e);
+      console.warn("Gemini chat failed or key missing, switching to Mistral fallback.", e);
     }
   }
 
-  if (MISTRAL_API_KEY) {
+  // 2. Fallback: Use Mistral
+  if (isValidKey(MISTRAL_API_KEY)) {
     try {
+      // Optional: Add search results to chat if it's a resource request
+      let context = "";
+      if (message.toLowerCase().includes("find") || message.toLowerCase().includes("course") || message.toLowerCase().includes("learn")) {
+        context = await performWebSearch(message);
+      }
+
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -259,7 +289,7 @@ export async function getChatResponse(message: string, history: { role: 'user' |
         body: JSON.stringify({
           model: "mistral-large-latest",
           messages: [
-            { role: "system", content: "You are a helpful learning assistant." },
+            { role: "system", content: `You are a helpful learning assistant. ${context ? `Use this web search context to help the user: ${context}` : ""}` },
             ...history.map(m => ({ 
               role: m.role === 'user' ? 'user' : 'assistant', 
               content: m.text 
@@ -271,9 +301,9 @@ export async function getChatResponse(message: string, history: { role: 'user' |
       const data = await response.json();
       return data.choices?.[0]?.message?.content || "Sorry, I couldn't process that.";
     } catch (e) {
-      console.error("Mistral chat failed:", e);
+      console.error("Mistral fallback chat failed:", e);
     }
   }
 
-  return "I'm sorry, but I'm having trouble connecting to my AI services right now.";
+  return "I'm sorry, but I'm having trouble connecting to my AI services right now. Please ensure your API keys are configured correctly.";
 }
