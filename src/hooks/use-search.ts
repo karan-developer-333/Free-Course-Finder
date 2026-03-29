@@ -16,11 +16,11 @@ export function useCourseSearch() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await searchCourses(query, settings);
+        const result = await searchCourses(query, JSON.parse(JSON.stringify(settings)));
         if (result.success && result.courses) {
           setCourses(result.courses);
         } else {
-          setError(result.error || 'Search failed');
+          setError(result.error || 'Search failed. Please check your API keys in Settings.');
         }
       } catch (e) {
         setError('An unexpected error occurred');
@@ -56,11 +56,11 @@ export function useRoadmap() {
       setIsLoading(true);
       setError(null);
       try {
-        const result = await generateRoadmap(topic, settings);
+        const result = await generateRoadmap(topic, JSON.parse(JSON.stringify(settings)));
         if (result.success && result.roadmap) {
           setRoadmap(result.roadmap);
         } else {
-          setError(result.error || 'Failed to generate roadmap');
+          setError(result.error || 'Failed to generate roadmap. Please check your API keys in Settings.');
         }
       } catch (e) {
         setError('An unexpected error occurred');

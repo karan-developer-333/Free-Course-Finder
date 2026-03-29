@@ -28,12 +28,13 @@ export function SearchBar({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="pl-12"
+          className="pl-12 w-50 text-xs sm:text-lg sm:w-full"
           disabled={isLoading}
         />
       </div>
-      <Button type="submit" disabled={isLoading || !value.trim()}>
-        {isLoading ? 'Searching...' : 'Search'}
+      <Button type="submit" disabled={isLoading || !value.trim()} className="px-4 sm:px-6">
+        <span className="hidden sm:inline">{isLoading ? 'Searching...' : 'Search'}</span>
+        <span className="sm:hidden"><Search className="w-4 h-4" /></span>
       </Button>
     </form>
   );

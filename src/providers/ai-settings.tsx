@@ -13,6 +13,10 @@ const defaultSettings: AISettings = {
   primaryProvider: 'gemini',
 };
 
+function createPlainObject<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj));
+}
+
 const AISettingsContext = createContext<AISettingsContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'free-course-finder-settings';
@@ -38,8 +42,10 @@ export function AISettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
   };
 
+  const plainSettings = JSON.parse(JSON.stringify(settings));
+  
   return (
-    <AISettingsContext.Provider value={{ settings, updateSettings, isLoading }}>
+    <AISettingsContext.Provider value={{ settings: plainSettings, updateSettings, isLoading }}>
       {children}
     </AISettingsContext.Provider>
   );

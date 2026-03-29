@@ -2,8 +2,8 @@
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { Mistral } from '@mistralai/mistralai';
-import { generateText, streamText } from 'ai';
-import { AISettings, Course, Roadmap, ChatMessage } from '@/types';
+import { generateText } from 'ai';
+import { AISettings, Course, Roadmap } from '@/types';
 
 const DEFAULT_TAVILY_KEY = process.env.TAVILY_API_KEY || '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';
 const DEFAULT_SERPER_KEY = process.env.SERPER_API_KEY || '60738fce452a865368332321d9507edde21c5b1a';
@@ -14,7 +14,7 @@ function isValidKey(key: string | undefined): boolean {
   return k !== '' && !k.includes('MY_') && !k.includes('TODO') && k !== 'undefined' && k !== 'null';
 }
 
-async function performWebSearch(query: string, keys: Partial<AISettings>): Promise<string> {
+export async function performWebSearch(query: string, keys: Partial<AISettings>): Promise<string> {
   let results = '';
   const tavilyKey = isValidKey(keys.tavilyApiKey) ? keys.tavilyApiKey : DEFAULT_TAVILY_KEY;
   const serperKey = isValidKey(keys.serperApiKey) ? keys.serperApiKey : DEFAULT_SERPER_KEY;
@@ -201,77 +201,4 @@ export async function generateRoadmap(
   return { success: false, error: 'All roadmap providers failed.' };
 }
 
-export async function getChatResponse(
-  message: string,
-  history: ChatMessage[],
-  settings: AISettings
-): Promise<{ success: boolean; text?: string; error?: string }> {
-  const geminiKey = isValidKey(settings.geminiApiKey)
-    ? settings.geminiApiKey
-    : process.env.GEMINI_API_KEY;
-  const mistralKey = isValidKey(settings.mistralApiKey)
-    ? settings.mistralApiKey
-    : process.env.MISTRAL_API_KEY;
 
-  if (settings.primaryProvider !== 'mistral' && isValidKey(geminiKey)) {
-    try {
-      const google = createGoogleGenerativeAI({ apiKey: geminiKey! });
-      const { text } = await generateText({
-        model: google('gemini-2.0-flash'),
-        system: 'You are a helpful learning assistant. Help the user find educational resources and explain complex topics simply.',
-        messages: history.map((m) => ({
-          role: m.role === 'user' ? 'user' : 'assistant',
-          content: m.content,
-        })),
-      });
-      
-      if (text) {
-        return { success: true, text };
-      }
-    } catch (e) {
-      console.warn('Gemini chat failed:', e);
-    }
-  }
-
-  if (isValidKey(mistralKey)) {
-    try {
-      let context = '';
-      if (
-        message.toLowerCase().includes('find') ||
-        message.toLowerCase().includes('course') ||
-        message.toLowerCase().includes('learn')
-      ) {
-        context = await performWebSearch(message, settings);
-      }
-
-      const mistral = new Mistral({ apiKey: mistralKey! });
-      const response = await mistral.chat.complete({
-        model: 'mistral-medium-latest',
-        messages: [
-          {
-            role: 'system' as const,
-            content: `You are a helpful learning assistant. ${context ? `Use this web search context to help the user: ${context}` : ''}`,
-          },
-          ...history.map((m): { role: 'user' | 'assistant'; content: string } => ({
-            role: m.role === 'user' ? 'user' : 'assistant',
-            content: m.content,
-          })),
-          { role: 'user' as const, content: message },
-        ],
-      });
-      
-      const content = response.choices?.[0]?.message?.content;
-      const text = typeof content === 'string' ? content : undefined;
-      if (text) {
-        return { success: true, text };
-      }
-    } catch {
-      console.error('Mistral chat failed');
-    }
-  }
-
-  return {
-    success: false,
-    error: 'No valid API keys provided. Please check your settings.',
-  };
-}

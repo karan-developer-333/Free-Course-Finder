@@ -51,13 +51,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-brand-black text-white py-6 px-4">
+      <header className="bg-brand-black text-white py-4 sm:py-6 px-3 sm:px-4">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-3">
-            <GraduationCap className="w-10 h-10 text-brand-orange" />
+            <GraduationCap className="w-8 h-8 sm:w-10 sm:h-10 text-brand-orange" />
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Free Course Finder</h1>
-              <p className="text-sm text-white/60 font-mono">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Free Course Finder</h1>
+              <p className="text-xs sm:text-sm text-white/60 font-mono">
                 AI-powered learning resource discovery
               </p>
             </div>
@@ -65,7 +65,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full p-4 space-y-4">
+      <main className="flex-1 max-w-6xl mx-auto w-full p-3 sm:p-4 space-y-3 sm:space-y-4">
         <TabNav
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -73,7 +73,7 @@ export default function Home() {
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
 
-        <div className="brutal-border bg-white shadow-brutal p-6">
+        <div className="brutal-border bg-white shadow-brutal p-4 sm:p-6">
           <SearchBar
             value={query}
             onChange={setQuery}
@@ -120,7 +120,7 @@ export default function Home() {
                 <p className="font-bold text-lg">
                   Found {courses.length} free courses
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {courses.map((course, index) => (
                     <CourseCard
                       key={`${course.url}-${index}`}
